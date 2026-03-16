@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RLM Studio</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<div class="app">
+
+  <header class="titlebar">
+    <div class="titlebar-left">
+      <div class="app-icon">⟳</div>
+      <div>
+        <div class="app-name">RLM<span>.</span>Studio</div>
+        <div class="app-sub">dspy.RLM · Groq · llama-3.3-70b</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="dot" id="dot"></div>
+      <span id="stext">Ready</span>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <aside class="sidebar">
+      <div class="sb-inner">
+
+        <div class="field">
+          <label class="flabel">
+            System Prompt <span class="badge b-opt">Optional</span>
+          </label>
+          <textarea id="sys" rows="3"
+            placeholder="e.g. You are a senior data scientist. Be precise."></textarea>
+        </div>
+
+        <div class="field">
+          <label class="flabel">
+            Query <span class="badge b-req">Required</span>
+          </label>
+          <textarea id="qry" rows="4"
+            placeholder="What would you like to know about the context?"></textarea>
+        </div>
+
+        <div class="field">
+          <label class="flabel">
+            Context <span class="badge b-req">Required</span>
+          </label>
+
+          <div class="drop-zone" id="dz">
+            <input type="file" id="fi"
+              accept=".txt,.md,.csv,.json,.py,.js,.ts,.html,.xml,.log,.rst" />
+            <div class="dz-icon">📄</div>
+            <div class="dz-main" id="dz-label">Drop file or click to upload</div>
+            <div class="dz-sub">txt · md · csv · json · py · log…</div>
+          </div>
+
+          <div class="divider">or paste text</div>
+
+          <textarea id="ctx" rows="7"
+            placeholder="Paste your document, dataset, or any long-form text here…"></textarea>
+
+          <div class="ctx-stats" id="ctx-stats">
+            <span id="s-chars">—</span>
+            <span>·</span>
+            <span id="s-words">—</span>
+            <span>·</span>
+            <span id="s-chunks">—</span>
+          </div>
+        </div>
+
+        <div class="error-box" id="err">
+          <span>⚠︎</span><span id="errmsg"></span>
+        </div>
+
+
+        <div class="btn-row" id="btn-row">
+          <button class="btn btn-primary" id="run-btn" onclick="runRLM()">▶ Run</button>
+        </div>
+
+      </div>
+    </aside>
+
+    <section class="right-panel">
+
+      <nav class="seg-nav">
+        <button class="seg-btn active" data-tab="trajectory" onclick="switchTab('trajectory')">
+          Trajectory <span class="n-badge" id="n-traj">0</span>
+        </button>
+        <button class="seg-btn" data-tab="repl" onclick="switchTab('repl')">
+          REPL <span class="n-badge" id="n-repl">0</span>
+        </button>
+        <button class="seg-btn" data-tab="ans" onclick="switchTab('ans')">
+          Answer
+        </button>
+      </nav>
+      <div class="panel active" id="trajectory-panel">
+
+        <div class="empty" id="traj-empty" style="display:flex">
+          <div class="empty-icon" style="background:var(--blue-a10)">⟳</div>
+          <div class="empty-title">RLM Studio</div>
+          <div class="empty-desc">
+            dspy.RLM stores your context as a Python variable in a sandboxed REPL.
+            The LM writes code to explore it — no context rot.
+          </div>
+          <div class="flow-steps">
+            <div class="fs-item">
+              <div class="fs-dot" style="background:var(--blue-a10)">◈</div>
+              <div class="fs-label" style="color:var(--blue)">Peek</div>
+            </div>
+            <div class="fs-item">
+              <div class="fs-dot" style="background:var(--orange-a12)">▸</div>
+              <div class="fs-label" style="color:var(--orange)">Explore</div>
+            </div>
+            <div class="fs-item">
+              <div class="fs-dot" style="background:var(--purple-a10)">⬡</div>
+              <div class="fs-label" style="color:var(--purple)">llm_query</div>
+            </div>
+            <div class="fs-item">
+              <div class="fs-dot" style="background:var(--green-a12)">✦</div>
+              <div class="fs-label" style="color:var(--green)">SUBMIT</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="traj-steps"></div>
+
+        <div class="loading-row" id="traj-load">
+          <div class="spinner"></div>
+          <span id="load-msg">Starting dspy.RLM…</span>
+        </div>
+
+      </div>
+
+      <div class="panel" id="repl-panel">
+
+        <div class="empty" id="repl-empty" style="display:flex">
+          <div class="empty-icon" style="background:#1c1c1e;font-size:20px">$_</div>
+          <div class="empty-title">Python REPL</div>
+          <div class="empty-desc">
+            dspy.RLM runs a real sandboxed Python interpreter (Deno + Pyodide).
+            Each LLM iteration writes and executes code here — you'll see every
+            <code style="font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px">print()</code>,
+            <code style="font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px">llm_query()</code>,
+            and the final
+            <code style="font-size:11px;background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px">SUBMIT()</code>.
+          </div>
+        </div>
+
+      </div>
+
+      <div class="panel" id="ans-panel">
+
+        <div class="empty" id="ans-empty" style="display:flex">
+          <div class="empty-icon" style="background:var(--green-a12)">💬</div>
+          <div class="empty-title">No Answer Yet</div>
+          <div class="empty-desc">Run the model to see the synthesised answer here.</div>
+        </div>
+
+      </div>
+
+    </section>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
